@@ -70,23 +70,19 @@ impl BipartiteGraph {
     pub fn pair_crossing_number(&self, u: usize, v: usize) -> u64 {
         let nu = &self.adjs[u];
         let nv = &self.adjs[v];
-        let mut cn: u64 = 0;
-        if nu.len() <= nv.len() {
-            for x in nu.iter() {
-                cn += match nv.binary_search(x) {
-                    Ok(i) =>  i as u64,
-                    Err(i) => i as u64
-                };
+        let ul = nu.len();
+        let vl = nv.len();
+        let mut cn = 0;
+        let mut idx = 0;
+        for i in 0..ul {
+            unsafe {
+                while idx < vl && *nv.get_unchecked(idx) < *nu.get_unchecked(i) {
+                    idx += 1;
+                }
             }
-        } else {
-            for x in nv.iter() {
-                cn += nu.len() as u64 - match nu.binary_search(x) {
-                    Ok(i) =>  i as u64 + 1, 
-                    Err(i) => i as u64
-                }; 
-            }
+            cn += idx;
         }
-        cn
+        cn as u64
     }
 
     pub fn crossing_matrix(&self) -> Vec<Vec<u64>> {

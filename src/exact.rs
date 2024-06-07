@@ -5,12 +5,16 @@ use crate::ihs;
 /// Performs the reduction and calls the solver for each SCC of the obtained instance. 
 /// Aftewards the results of the individual calls are glued together for the final result.
 pub fn wdfas(g: &BipartiteGraph) -> Vec<usize> {
+    //use std::time::Instant;
+    //let start = Instant::now();
     let sccs = g.reduce();
     let mut ordering = Vec::new();
     for u in g.isolated.iter().cloned() {
         ordering.push(u);
     }
     for scc in sccs.iter() {
+        //println!("elapsed {}", start.elapsed().as_secs_f64());
+        //println!("scc sz {}", scc.n);
         if scc.n == 1 {
             for twin in g.ids[scc.labels[0]].iter().cloned() {
                 ordering.push(twin);
