@@ -5,6 +5,8 @@ use std::collections::{HashSet,HashMap};
 use itertools::{ Itertools, iproduct };
 use bit_set::BitSet;
 use highs::RowProblem;
+use rand::seq::SliceRandom;
+use rand::thread_rng;
 
 /// Returns an ordering of the vertices such that the directed edges x -> y violating this ordering (x comes after y) form a *minimum* weight [feedback arc set] of the given graph 
 /// (i.e. a topological ordering of the spanning DAG of the FAS), which is usually a strongly connected component of the input.
@@ -41,6 +43,13 @@ pub fn solve(scc: &SCC) -> Vec<usize> {
     };
 
     let mut cycles = graph::three_cycles(&scc.g).into_iter().map(cycle2arcs).collect_vec();
+    
+    // constrain number of initial cycles added
+    let init_cap = 100_000;
+    if cycles.len() > init_cap {
+        cycles.shuffle(&mut thread_rng());
+        cycles.truncate(init_cap);
+    }
 
     // repeatedly find a feedback arc set (a hitting set on the cycles) and compute new (still not hit) cycles
     let mut fas;
@@ -147,10 +156,17 @@ fn new_cycles(w: &Vec<Vec<u64>>, g: &Vec<Vec<usize>>, fas: &BitSet, arcid: impl 
 	.filter    ( |(u,v)| !fas.contains(arcid(*u,**v))                        )
 	.for_each  ( |(u,v)|  residual[u].push(*v)                               );
 
-    generate_new_cycles( 
+    let mut cycles = generate_new_cycles( 
 	&find_fas(&residual, w), 
 	&residual
-    )
+    );
+    
+    let update_cap = 20_000;
+    if cycles.len() > update_cap {
+        cycles.shuffle(&mut thread_rng());
+        cycles.truncate(update_cap);
+    }
+    cycles
 }
 
 /// Computes an minimum weight hitting set of the given set system.
@@ -175,6 +191,11 @@ fn hitting_set(sets: &Vec<Vec<usize>>, weights: &Vec<u64>, relaxation: bool) -> 
     }
 
     let mut model = problem.optimise(highs::Sense::Minimise);
+    
+    match relaxation {
+        false => model.set_option("solver", "choose"),
+        true =>  model.set_option("solver", "ipm") 
+    };
     
     model.set_option("parallel", "off");
     model.set_option("threads", 1);
